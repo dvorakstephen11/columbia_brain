@@ -23,7 +23,7 @@ async def secure_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; script-src 'self'"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' https://unpkg.com"
     return response
 
 @app.get("/", response_class=HTMLResponse)
@@ -40,3 +40,4 @@ def healthz():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return "ok"
+
