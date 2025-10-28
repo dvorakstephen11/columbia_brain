@@ -83,3 +83,6 @@ pytest
 ```
 
 This verifies the `/healthz` endpoint and database connectivity.
+
+
+There is also a Dockerfile that can be used to build a Docker image of the application.
