@@ -36,3 +36,8 @@ jobs:
           tags: ${{ env.IMAGE_SHA }},${{ env.IMAGE_LATEST }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trigger Render Deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
