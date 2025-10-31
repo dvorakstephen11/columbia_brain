@@ -2,23 +2,25 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from sqlalchemy import create_engine, text
+
+from .auth import router as auth_router
+from .db import Base, engine
 
 app = FastAPI()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 templates = Jinja2Templates(directory="templates")
 
-db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
-engine = create_engine(db_url, pool_pre_ping=True)
+Base.metadata.create_all(bind=engine)
 
 dist_dir = BASE_DIR / "frontend" / "dist"
 assets_dir = dist_dir / "assets"
-
 if assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
@@ -31,10 +33,23 @@ def resolve_index_path() -> Path:
     return BASE_DIR / "templates" / "index.html"
 
 
+def _split_hosts(raw_hosts: str) -> list[str]:
+    return [host.strip() for host in raw_hosts.split(",") if host.strip()]
+
+
 allowed_hosts_default = "testserver,localhost,127.0.0.1,0.0.0.0,*.onrender.com"
-allowed_hosts = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", allowed_hosts_default).split(",") if host.strip()]
+allowed_hosts = _split_hosts(os.environ.get("ALLOWED_HOSTS", allowed_hosts_default))
 if allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_origin],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.middleware("http")
@@ -76,3 +91,6 @@ def healthz():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return "ok"
+
+
+app.include_router(auth_router)
