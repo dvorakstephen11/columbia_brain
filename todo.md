@@ -1,5 +1,68 @@
 # todo
 
+PHASE ONE: MVP
+- DB + Auth + User Profile
+- Improve Calendar UI
+- Scraping
+- FTS
+- RAG
+- Knowledge Graphs
+- SMTP
+- Stripe (??? Or phase 2?)
+- Legal basics (privacy policy, terms of service, etc.)
+- MVP  (Mid-February?)
+
+PHASE TWO:
+- Alert feature
+- Marketing
+- $10/mo subscription
+- News
+    - Scrape Maury County and City of Columbia website for meeting files (text, video, audio, pictures)
+- 10 paying customers by 2026-04-24 (JESUS BIRTHDAY)
+
+PHASE THREE:
+- Directory
+- MASSIVE scraping improvement + deployment
+
+
+PHASE FOUR:
+- Games
+- Socials
+- Church stuff?
+
+
+PHASE FIVE:
+- Business subscription (market trends)
+
+
+PHASE SIX:
+- IoT
+
+
+PHASE SEVEN: EXPAND
+- Expand to one other location
+    - Spring Hill? 
+        - Or maybe Spring Hill is already covered by Maury County
+    - Mount Pleasant?
+        - Or maybe Mount Pleasant is already covered by Maury County
+    - Franklin?
+    - Murfreesboro?
+- Primary difficulty is in scaling the data infrastructure for processing all the extra data.
+
+PHASE EIGHT: EXPLODE
+- Expand to two additional locations
+    - Nashville
+    - Brentwood
+    
+PHASE NINE: CONQUER EVERYTHING
+- Expand to five additional locations
+    - Chattanooga
+    - Memphis
+    - Clarksville
+    - Dickson
+    - Knoxville
+
+
 - Figure out how to scale the Calendar UI
     - Is it the correct way to handle displaying events? 
         - There will be hundreds or thousands of events in a month
@@ -32,3 +95,10 @@
         - Josh Owens (can get his opinion on the website from the perspective of a professional web developer)
         - Lance (FussyFriendNachos on Reddit)
         - Dad? (nah, not for beta)
+
+
+- Figure out how to incorporate my positivesumtechnologies.com domain
+     - Maybe I need to buy another domain
+
+
+    

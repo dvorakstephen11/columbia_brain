@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AuthPanel from '@/components/AuthPanel.jsx';
 import CalendarGrid from '@/components/CalendarGrid.jsx';
 import EventPanel from '@/components/EventPanel.jsx';
-import { generateMonthGrid, getMonthLabel, getWeekdayLabels } from '@/utils/dates';
 import { mockEvents } from '@/data/mockEvents';
+import { generateMonthGrid, getMonthLabel, getWeekdayLabels } from '@/utils/dates';
 
 const App = () => {
   const [today] = useState(() => new Date());
@@ -18,23 +19,23 @@ const App = () => {
 
   const eventsByDay = useMemo(() => {
     const map = new Map();
-    events.forEach((event) => {
+    events.forEach(event => {
       const key = event.startsAt.toDateString();
       if (!map.has(key)) {
         map.set(key, []);
       }
       map.get(key).push(event);
     });
-    map.forEach((list) => list.sort((a, b) => a.startsAt - b.startsAt));
+    map.forEach(list => list.sort((a, b) => a.startsAt - b.startsAt));
     return map;
   }, [events]);
 
   const selectedEvent = useMemo(
-    () => events.find((event) => event.id === selectedEventId) ?? null,
+    () => events.find(event => event.id === selectedEventId) ?? null,
     [events, selectedEventId]
   );
 
-  const handleSelectEvent = useCallback((event) => {
+  const handleSelectEvent = useCallback(event => {
     setActiveTriggerId(event.id);
     setSelectedEventId(event.id);
   }, []);
@@ -67,10 +68,11 @@ const App = () => {
         <div>
           <p className="app-header__eyebrow">Local events (mock)</p>
           <h1>{monthLabel}</h1>
+          <p className="app-header__subtitle">
+            Discover what's happening around town this month - curated highlights for inspiration.
+          </p>
         </div>
-        <p className="app-header__subtitle">
-          Discover what’s happening around town this month — curated highlights for inspiration.
-        </p>
+        <AuthPanel />
       </header>
       <main className="app-main" aria-hidden={selectedEvent ? true : undefined}>
         <CalendarGrid

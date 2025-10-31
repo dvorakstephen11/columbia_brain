@@ -12,5 +12,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true
+  },
+  server: {
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/healthz': 'http://localhost:8000'
+    }
   }
 });
