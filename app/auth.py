@@ -97,11 +97,21 @@ def register(req: RegisterRequest, request: Request, response: Response, db: Ses
     email_norm = req.email.strip().lower()
     existing = db.query(User).filter(User.email == email_norm).one_or_none()
     if existing:
-        return {"ok": True}
-
-    user = User(email=email_norm, password_hash=hash_password(req.password))
-    db.add(user)
-    db.flush()
+        if existing.is_email_verified:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account already exists")
+        existing.password_hash = hash_password(req.password)
+        tokens = (
+            db.query(EmailVerificationToken)
+            .filter(EmailVerificationToken.user_id == existing.id, EmailVerificationToken.used.is_(False))
+            .all()
+        )
+        for token in tokens:
+            token.used = True
+        user = existing
+    else:
+        user = User(email=email_norm, password_hash=hash_password(req.password))
+        db.add(user)
+        db.flush()
 
     raw_token, token_hash = make_email_token()
     token_row = EmailVerificationToken(
