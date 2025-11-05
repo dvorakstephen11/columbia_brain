@@ -10,6 +10,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     email = Column(String(320), unique=True, index=True, nullable=False)
+    username = Column(String(50), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     is_email_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
@@ -21,12 +22,12 @@ class EmailVerificationToken(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    token_hash = Column(String(128), unique=True, nullable=False)
+    token_hash = Column(String(128), nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False, nullable=False)
 
 
-Index("ix_evt_valid", EmailVerificationToken.token_hash, EmailVerificationToken.used)
+Index("ix_evt_valid", EmailVerificationToken.user_id, EmailVerificationToken.token_hash, EmailVerificationToken.used)
 
 
 class OutboundEmail(Base):

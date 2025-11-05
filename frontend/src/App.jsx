@@ -1,91 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import AuthPanel from '@/components/AuthPanel.jsx';
-import CalendarGrid from '@/components/CalendarGrid.jsx';
-import EventPanel from '@/components/EventPanel.jsx';
-import { mockEvents } from '@/data/mockEvents';
-import { generateMonthGrid, getMonthLabel, getWeekdayLabels } from '@/utils/dates';
+import React from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-const App = () => {
-  const [today] = useState(() => new Date());
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [activeTriggerId, setActiveTriggerId] = useState(null);
-  const triggerRefs = useRef(new Map());
+import AppLayout from '@/layouts/AppLayout.jsx';
+import CalendarPage from '@/pages/CalendarPage.jsx';
+import LoginPage from '@/pages/LoginPage.jsx';
+import RegisterPage from '@/pages/RegisterPage.jsx';
+import VerifyPage from '@/pages/VerifyPage.jsx';
+import UsernameSetupPage from '@/pages/UsernameSetupPage.jsx';
 
-  const weekdayLabels = useMemo(() => getWeekdayLabels(), []);
-  const monthLabel = useMemo(() => getMonthLabel(today), [today]);
-  const calendarDays = useMemo(() => generateMonthGrid(today), [today]);
-
-  const events = useMemo(() => mockEvents, []);
-
-  const eventsByDay = useMemo(() => {
-    const map = new Map();
-    events.forEach(event => {
-      const key = event.startsAt.toDateString();
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-      map.get(key).push(event);
-    });
-    map.forEach(list => list.sort((a, b) => a.startsAt - b.startsAt));
-    return map;
-  }, [events]);
-
-  const selectedEvent = useMemo(
-    () => events.find(event => event.id === selectedEventId) ?? null,
-    [events, selectedEventId]
-  );
-
-  const handleSelectEvent = useCallback(event => {
-    setActiveTriggerId(event.id);
-    setSelectedEventId(event.id);
-  }, []);
-
-  const registerTrigger = useCallback((eventId, node) => {
-    if (!node) {
-      triggerRefs.current.delete(eventId);
-    } else {
-      triggerRefs.current.set(eventId, node);
-    }
-  }, []);
-
-  const handleClosePanel = useCallback(() => {
-    setSelectedEventId(null);
-  }, []);
-
-  useEffect(() => {
-    if (selectedEventId === null && activeTriggerId) {
-      const trigger = triggerRefs.current.get(activeTriggerId);
-      if (trigger) {
-        trigger.focus();
-      }
-      setActiveTriggerId(null);
-    }
-  }, [selectedEventId, activeTriggerId]);
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="app-header__eyebrow">Local events (mock)</p>
-          <h1>{monthLabel}</h1>
-          <p className="app-header__subtitle">
-            Discover what's happening around town this month - curated highlights for inspiration.
-          </p>
-        </div>
-        <AuthPanel />
-      </header>
-      <main className="app-main" aria-hidden={selectedEvent ? true : undefined}>
-        <CalendarGrid
-          days={calendarDays}
-          eventsByDay={eventsByDay}
-          weekdayLabels={weekdayLabels}
-          onSelectEvent={handleSelectEvent}
-          registerTrigger={registerTrigger}
-        />
-      </main>
-      <EventPanel event={selectedEvent} open={Boolean(selectedEvent)} onClose={handleClosePanel} />
-    </div>
-  );
-};
+const App = () => (
+  <Routes>
+    <Route element={<AppLayout />}>
+      <Route index element={<CalendarPage />} />
+      <Route path="login" element={<LoginPage />} />
+      <Route path="register" element={<RegisterPage />} />
+      <Route path="verify" element={<VerifyPage />} />
+      <Route path="username-setup" element={<UsernameSetupPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Route>
+  </Routes>
+);
 
 export default App;
