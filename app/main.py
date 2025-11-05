@@ -10,7 +10,7 @@ from sqlalchemy import text
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .auth import router as auth_router
-from .db import Base, engine
+from .db import Base, ensure_schema_upgrades, engine
 
 app = FastAPI()
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -18,6 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory="templates")
 
 Base.metadata.create_all(bind=engine)
+ensure_schema_upgrades()
 
 dist_dir = BASE_DIR / "frontend" / "dist"
 assets_dir = dist_dir / "assets"
