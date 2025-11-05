@@ -77,6 +77,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyCodeRequest(BaseModel):
+    token: str
+
+
 class MeResponse(BaseModel):
     id: int
     email: EmailStr
@@ -131,7 +135,7 @@ def register(req: RegisterRequest, request: Request, response: Response, db: Ses
     html = "<p>Welcome! Click to verify your email:</p><p><a href='{}'>Verify Email</a></p>".format(verify_url)
     send_email(db, to=email_norm, subject=subject, html=html)
 
-    return {"ok": True}
+    return {"ok": True, "verification_code": raw_token}
 
 
 @router.get("/verify")
@@ -155,6 +159,33 @@ def verify(token: str, db: Session = Depends(get_db)):
     db.commit()
 
     return HTMLResponse("<p>Email verified. You can close this tab and return to the app.</p>")
+
+
+@router.post("/verify-code")
+def verify_code(req: VerifyCodeRequest, db: Session = Depends(get_db)):
+    token_value = req.token.strip()
+    if not token_value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification code required")
+
+    token_hash = sha256_hex(token_value)
+    token_row = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token_hash == token_hash)
+        .one_or_none()
+    )
+    now = dt.datetime.utcnow()
+    if not token_row or token_row.used or token_row.expires_at < now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+
+    user = db.get(User, token_row.user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code")
+
+    user.is_email_verified = True
+    token_row.used = True
+    db.commit()
+
+    return {"ok": True}
 
 
 @router.post("/login")

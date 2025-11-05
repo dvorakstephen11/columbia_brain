@@ -23,7 +23,7 @@ export function useAuth() {
 
   const register = useCallback(async (email, password) => {
     await ensureCsrf();
-    await api('/auth/register', { method: 'POST', data: { email, password } });
+    return api('/auth/register', { method: 'POST', data: { email, password } });
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -38,5 +38,10 @@ export function useAuth() {
     setMe(null);
   }, []);
 
-  return { me, loading, register, login, logout, refresh };
+  const verifyCode = useCallback(async token => {
+    await ensureCsrf();
+    return api('/auth/verify-code', { method: 'POST', data: { token } });
+  }, []);
+
+  return { me, loading, register, login, logout, refresh, verifyCode };
 }
