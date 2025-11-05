@@ -1,5 +1,7 @@
 # Python
+# Python cache directories
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *.sqlite3
 
