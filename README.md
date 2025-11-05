@@ -12,6 +12,7 @@ A desktop-first single page calendar experience that highlights seven curated lo
 │   │   ├── components/   # Calendar UI primitives
 │   │   ├── data/         # Mock event data
 │   │   └── utils/        # Date + accessibility helpers
+├── migrations/           # SQL helpers for auth-related schema updates
 ├── templates/            # Fallback template when the SPA hasn’t been built yet
 └── tests/                # FastAPI smoke tests
 ```
@@ -66,6 +67,19 @@ Render setup (Static Site):
 
 If you are using the FastAPI wrapper instead of Render’s static hosting, ensure the build step runs before the service starts so the `dist` directory exists.
 
+Database migrations for the login refactor are tracked in [`migrations/`](migrations/README.md). Apply those SQL snippets before deploying the new authentication flow.
+
+## Authentication flow
+
+The calendar now exposes dedicated auth routes instead of embedding the forms inline:
+
+1. `/register` – create an account with email + password. In development the API response contains `mock_verification_code` so you can see the 6-digit code without inspecting email logs.
+2. `/verify` – submit the 6-digit code. Successful verification issues a short-lived token for the next step.
+3. `/username-setup` – pick a unique username. After saving you can proceed to log in.
+4. `/login` – sign in; verified accounts without a username are rejected until they finish the username step.
+
+The header now shows a user icon with a contextual menu. When signed out it links to the login/registration pages (and, if applicable, the next step in a pending sign-up). When signed in it displays the current user’s username/email and provides a logout action.
+
 ## Accessibility and interaction checklist
 
 - Calendar grid is always 7×6 cells to prevent layout shift.
@@ -76,13 +90,13 @@ If you are using the FastAPI wrapper instead of Render’s static hosting, ensur
 
 ## Testing
 
-The repository includes a simple FastAPI smoke test:
+Run the backend test suite (including the new registration flow coverage) with the project’s virtualenv:
 
 ```bash
-pytest
+./.venv/bin/python -m pytest -s
 ```
 
-This verifies the `/healthz` endpoint and database connectivity.
+This exercises the registration → verification → username → login flow, error handling, and the original `/healthz` smoke test.
 
 
 There is also a Dockerfile that can be used to build a Docker image of the application.

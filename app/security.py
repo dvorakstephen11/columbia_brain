@@ -40,9 +40,9 @@ def decode_session_jwt(token: str) -> Optional[int]:
         return None
 
 
-def make_email_token() -> Tuple[str, str]:
-    raw = secrets.token_urlsafe(32)
-    return raw, sha256_hex(raw)
+def make_numeric_code() -> Tuple[str, str]:
+    value = f"{secrets.randbelow(1_000_000):06d}"
+    return value, sha256_hex(value)
 
 
 def sha256_hex(value: str) -> str:
@@ -55,3 +55,35 @@ def safe_eq(a: str, b: str) -> bool:
 
 def make_csrf_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+REGISTRATION_TOKEN_TTL_SECONDS = 60 * 60 * 24
+
+
+def create_registration_token(user_id: int, stage: str, ttl_seconds: int = REGISTRATION_TOKEN_TTL_SECONDS) -> str:
+    now = dt.datetime.utcnow()
+    exp = now + dt.timedelta(seconds=ttl_seconds)
+    payload = {
+        "sub": str(user_id),
+        "stage": stage,
+        "iat": int(now.timestamp()),
+        "exp": int(exp.timestamp()),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALG)
+
+
+def decode_registration_token(token: str, expected_stage: Optional[str] = None) -> Optional[int]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALG])
+    except JWTError:
+        return None
+
+    try:
+        user_id = int(payload.get("sub"))
+    except (TypeError, ValueError):
+        return None
+
+    stage = payload.get("stage")
+    if expected_stage and stage != expected_stage:
+        return None
+    return user_id

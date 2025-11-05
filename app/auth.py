@@ -1,4 +1,6 @@
 import datetime as dt
+import re
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse
@@ -10,17 +12,23 @@ from .db import SessionLocal
 from .email import send_email
 from .models import EmailVerificationToken, OutboundEmail, User
 from .security import (
+    create_registration_token,
     create_session_jwt,
+    decode_registration_token,
     decode_session_jwt,
     hash_password,
     make_csrf_token,
-    make_email_token,
+    make_numeric_code,
     safe_eq,
     sha256_hex,
     verify_password,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+REG_STAGE_AWAITING_VERIFICATION = "awaiting_verification"
+REG_STAGE_AWAITING_USERNAME = "awaiting_username"
+USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
 
 
 def get_db():
@@ -67,6 +75,35 @@ def require_csrf(request: Request) -> None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF check failed")
 
 
+def get_session_user(request: Request, db: Session) -> Optional[User]:
+    session_token = request.cookies.get("session")
+    if not session_token:
+        return None
+    user_id = decode_session_jwt(session_token)
+    if not user_id:
+        return None
+    return db.get(User, user_id)
+
+
+def ensure_session_user(request: Request, db: Session) -> User:
+    user = get_session_user(request, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return user
+
+
+def normalize_username(raw: str) -> str:
+    value = raw.strip()
+    if not (3 <= len(value) <= 30):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username must be 3-30 characters")
+    if not USERNAME_PATTERN.fullmatch(value):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username can contain letters, numbers, and underscores only",
+        )
+    return value.lower()
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
@@ -78,13 +115,21 @@ class LoginRequest(BaseModel):
 
 
 class VerifyCodeRequest(BaseModel):
-    token: str
+    code: str
+    email: Optional[EmailStr] = None
+    registration_token: Optional[str] = None
+
+
+class UsernameRequest(BaseModel):
+    username: str
+    registration_token: Optional[str] = None
 
 
 class MeResponse(BaseModel):
     id: int
     email: EmailStr
     is_email_verified: bool
+    username: Optional[str]
 
 
 @router.get("/csrf")
@@ -95,7 +140,7 @@ def csrf(response: Response):
 
 
 @router.post("/register")
-def register(req: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     require_csrf(request)
 
     email_norm = req.email.strip().lower()
@@ -117,7 +162,7 @@ def register(req: RegisterRequest, request: Request, response: Response, db: Ses
         db.add(user)
         db.flush()
 
-    raw_token, token_hash = make_email_token()
+    raw_code, token_hash = make_numeric_code()
     token_row = EmailVerificationToken(
         user_id=user.id,
         token_hash=token_hash,
@@ -127,15 +172,27 @@ def register(req: RegisterRequest, request: Request, response: Response, db: Ses
     db.commit()
 
     if PUBLIC_BASE_URL:
-        verify_url = f"{PUBLIC_BASE_URL}/auth/verify?token={raw_token}"
+        verify_url = f"{PUBLIC_BASE_URL}/auth/verify?token={raw_code}"
     else:
-        verify_url = f"/auth/verify?token={raw_token}"
+        verify_url = f"/auth/verify?token={raw_code}"
 
     subject = "Verify your email"
-    html = "<p>Welcome! Click to verify your email:</p><p><a href='{}'>Verify Email</a></p>".format(verify_url)
+    html = (
+        "<p>Welcome! Use this verification code to activate your account:</p>"
+        f"<p><strong style='font-size:20px; letter-spacing:4px;'>{raw_code}</strong></p>"
+        "<p>If the app asks for it, enter the code exactly as shown above.</p>"
+        "<p>You can also click the link below:</p>"
+        f"<p><a href='{verify_url}'>Verify Email</a></p>"
+    )
     send_email(db, to=email_norm, subject=subject, html=html)
 
-    return {"ok": True, "verification_code": raw_token}
+    payload = {
+        "pending_verification": True,
+        "registration_token": create_registration_token(user.id, REG_STAGE_AWAITING_VERIFICATION),
+    }
+    if DEV_MODE:
+        payload["mock_verification_code"] = raw_code
+    return payload
 
 
 @router.get("/verify")
@@ -163,29 +220,91 @@ def verify(token: str, db: Session = Depends(get_db)):
 
 @router.post("/verify-code")
 def verify_code(req: VerifyCodeRequest, db: Session = Depends(get_db)):
-    token_value = req.token.strip()
-    if not token_value:
+    code_value = req.code.strip()
+    if not code_value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification code required")
+    if not code_value.isdigit() or len(code_value) != 6:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Code must be a 6-digit number")
 
-    token_hash = sha256_hex(token_value)
-    token_row = (
-        db.query(EmailVerificationToken)
-        .filter(EmailVerificationToken.token_hash == token_hash)
-        .one_or_none()
-    )
+    user: Optional[User] = None
+    if req.registration_token:
+        user_id = decode_registration_token(req.registration_token, expected_stage=REG_STAGE_AWAITING_VERIFICATION)
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid registration token")
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account not found")
+    elif req.email:
+        email_norm = req.email.strip().lower()
+        user = db.query(User).filter(User.email == email_norm).one_or_none()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account not found")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration token or email is required",
+        )
+
+    token_hash = sha256_hex(code_value)
     now = dt.datetime.utcnow()
-    if not token_row or token_row.used or token_row.expires_at < now:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+    query = (
+        db.query(EmailVerificationToken)
+        .filter(
+            EmailVerificationToken.token_hash == token_hash,
+            EmailVerificationToken.used.is_(False),
+            EmailVerificationToken.expires_at >= now,
+        )
+        .order_by(EmailVerificationToken.id.desc())
+    )
+    query = query.filter(EmailVerificationToken.user_id == user.id)
 
-    user = db.get(User, token_row.user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code")
+    token_row = query.first()
+    if not token_row:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
 
     user.is_email_verified = True
     token_row.used = True
     db.commit()
 
-    return {"ok": True}
+    response_payload = {
+        "verified": True,
+        "username_required": user.username is None,
+    }
+    if user.username is None:
+        response_payload["registration_token"] = create_registration_token(user.id, REG_STAGE_AWAITING_USERNAME)
+    return response_payload
+
+
+@router.post("/username")
+def set_username(req: UsernameRequest, request: Request, db: Session = Depends(get_db)):
+    username = normalize_username(req.username)
+
+    used_registration_token = bool(req.registration_token)
+    if used_registration_token:
+        user_id = decode_registration_token(req.registration_token, expected_stage=REG_STAGE_AWAITING_USERNAME)
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid registration token")
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account not found")
+    else:
+        require_csrf(request)
+        user = ensure_session_user(request, db)
+
+    if not user.is_email_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email not verified")
+
+    existing = db.query(User).filter(User.username == username).one_or_none()
+    if existing and existing.id != user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already in use")
+
+    user.username = username
+    db.commit()
+
+    payload = {"username": user.username, "completed": True}
+    if used_registration_token:
+        payload["next"] = "login"
+    return payload
 
 
 @router.post("/login")
@@ -198,6 +317,8 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials")
     if not user.is_email_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified")
+    if not user.username:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Username required")
 
     token = create_session_jwt(user.id)
     set_session_cookie(response, token)
@@ -213,19 +334,13 @@ def logout(request: Request, response: Response):
 
 @router.get("/me", response_model=MeResponse)
 def me(request: Request, db: Session = Depends(get_db)):
-    session_token = request.cookies.get("session")
-    if not session_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-    user_id = decode_session_jwt(session_token)
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-    user = db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-    return MeResponse(id=user.id, email=user.email, is_email_verified=user.is_email_verified)
+    user = ensure_session_user(request, db)
+    return MeResponse(
+        id=user.id,
+        email=user.email,
+        is_email_verified=user.is_email_verified,
+        username=user.username,
+    )
 
 
 if DEV_MODE:
