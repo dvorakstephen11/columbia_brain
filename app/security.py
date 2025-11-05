@@ -4,8 +4,8 @@ import hmac
 import secrets
 from typing import Optional, Tuple
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.hash import bcrypt
 
 from .config import SECRET_KEY, SESSION_MAX_AGE
 
@@ -13,13 +13,15 @@ JWT_ALG = "HS256"
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    # bcrypt returns ASCII-encoded hash; decode for storage
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     try:
-        return bcrypt.verify(password, password_hash)
-    except Exception:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except (TypeError, ValueError):
         return False
 
 
