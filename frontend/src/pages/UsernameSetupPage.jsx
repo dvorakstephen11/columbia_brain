@@ -11,10 +11,10 @@ const UsernameSetupPage = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (pendingRegistration?.stage !== 'username' && !loading && !me) {
+    if (pendingRegistration) {
       setSuccess(false);
     }
-  }, [pendingRegistration, loading, me]);
+  }, [pendingRegistration]);
 
   if (!loading && me) {
     return (
@@ -24,6 +24,24 @@ const UsernameSetupPage = () => {
         <Link to="/" className="auth-form__submit auth-form__submit--link">
           Back to calendar
         </Link>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="auth-card">
+        <h2 className="auth-card__title">Username saved</h2>
+        <p className="auth-card__intro">All set. You can log in with your email and password now.</p>
+        <Link to="/login" className="auth-form__submit auth-form__submit--link">
+          Go to log in
+        </Link>
+        <p className="auth-card__footer">
+          Need a different email?{' '}
+          <Link to="/register" className="auth-link">
+            Start over
+          </Link>
+        </p>
       </div>
     );
   }
@@ -78,11 +96,6 @@ const UsernameSetupPage = () => {
         {error ? (
           <p className="auth-form__message auth-form__message--error" role="alert">
             {error}
-          </p>
-        ) : null}
-        {success ? (
-          <p className="auth-form__message auth-form__message--success" role="status">
-            Saved! You can log in now.
           </p>
         ) : null}
         <button type="submit" className="auth-form__submit" disabled={submitting}>
