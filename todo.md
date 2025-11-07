@@ -1,7 +1,6 @@
 # todo
 
-Recent updates
-- Auth flow lives on dedicated routes (`/login`, `/register`, `/verify`, `/username-setup`); mock verification codes appear in dev responses and the account menu exposes shortcuts to finish sign-up.
+
 PHASE ONE: MVP
 - DB + Auth + User Profile
 - Improve Calendar UI
