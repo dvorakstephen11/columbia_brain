@@ -332,30 +332,54 @@ a {
 }
 
 .tag-pill {
+  --tag-pill-bg: rgba(15, 23, 42, 0.04);
+  --tag-pill-text: var(--text-primary);
+  --tag-pill-ring: rgba(15, 23, 42, 0.08);
+  --tag-pill-indicator-bg: rgba(255, 255, 255, 0.7);
+  --tag-pill-indicator-color: var(--tag-pill-text);
   border: none;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  background: rgba(15, 23, 42, 0.04);
-  color: var(--text-primary);
+  background: var(--tag-pill-bg, rgba(15, 23, 42, 0.04));
+  color: var(--tag-pill-text, var(--text-primary));
+  box-shadow: 0 0 0 1px var(--tag-pill-ring, rgba(15, 23, 42, 0.08));
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease,
+    color 150ms ease;
 }
 
-.tag-pill--selected {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 32px -18px rgba(15, 23, 42, 0.5);
+.tag-pill:hover {
+  box-shadow: 0 0 0 1px var(--tag-pill-ring, rgba(15, 23, 42, 0.14));
+}
+
+.tag-pill__indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--tag-pill-indicator-bg, rgba(255, 255, 255, 0.7));
+  color: var(--tag-pill-indicator-color, var(--tag-pill-text, var(--accent)));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
 }
 
 .tag-pill__dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   background: currentColor;
+}
+
+.tag-pill__check {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
 
 .tag-pill__label {
@@ -365,6 +389,27 @@ a {
 .tag-pill__count {
   font-size: 12px;
   opacity: 0.8;
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+.tag-pill--selected {
+  transform: translateY(-1px);
+  background: var(--accent);
+  color: #ffffff;
+  --tag-pill-indicator-bg: rgba(255, 255, 255, 0.22);
+  --tag-pill-indicator-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18),
+    0 0 0 6px var(--tag-pill-ring, rgba(37, 99, 235, 0.35)),
+    0 14px 34px -18px rgba(37, 99, 235, 0.6);
+}
+
+.tag-pill--selected .tag-pill__indicator {
+  transform: scale(1.05);
+}
+
+.tag-pill--selected .tag-pill__count {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .match-toggle {

@@ -43,27 +43,33 @@ const TagFilterBar = ({
               `${count} event${count === 1 ? '' : 's'} this month`
             ];
             if (isSelected) {
-              ariaLabelParts.push('selected');
+              ariaLabelParts.push('active filter');
             }
+            const customProperties = {
+              '--tag-pill-bg': meta?.color,
+              '--tag-pill-text': meta?.textColor,
+              '--tag-pill-ring': meta?.ringColor,
+              '--tag-pill-indicator-color': meta?.textColor
+            };
             return (
               <button
                 key={tagId}
                 type="button"
                 className={`tag-pill${isSelected ? ' tag-pill--selected' : ''}`}
-                style={{
-                  backgroundColor: meta?.color,
-                  color: meta?.textColor,
-                  boxShadow: meta?.ringColor ? `0 0 0 1px ${meta.ringColor}` : undefined
-                }}
+                style={customProperties}
                 aria-pressed={isSelected}
                 aria-label={ariaLabelParts.join(', ')}
                 onClick={() => onToggleTag(tagId)}
               >
-                <span
-                  className="tag-pill__dot"
-                  aria-hidden="true"
-                  style={{ backgroundColor: meta?.textColor }}
-                />
+                <span className="tag-pill__indicator" aria-hidden="true">
+                  {isSelected ? (
+                    <svg className="tag-pill__check" viewBox="0 0 12 12" focusable="false">
+                      <path d="M10.28 3.22a.75.75 0 0 0-1.06-1.06L4.75 6.63 3.28 5.16a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.08-.02l5-5Z" />
+                    </svg>
+                  ) : (
+                    <span className="tag-pill__dot" />
+                  )}
+                </span>
                 <span className="tag-pill__label">{meta?.label ?? tagId}</span>
                 <span className="tag-pill__count">{count}</span>
               </button>
