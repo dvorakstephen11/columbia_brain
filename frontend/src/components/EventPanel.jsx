@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
+
 import { formatTimeRange } from '@/utils/dates';
 import { trapFocus } from '@/utils/a11y';
+import { tagMetaById } from '@/data/tags';
 
 const EventPanel = ({ event, open, onClose }) => {
   const panelRef = useRef(null);
@@ -39,7 +41,8 @@ const EventPanel = ({ event, open, onClose }) => {
 
   if (!open || !event) return null;
 
-  const { title, description, startsAt, endsAt, location, organizer, categoryMeta, category } = event;
+  const { title, description, startsAt, endsAt, location, organizer, categoryMeta, category, tags = [] } =
+    event;
 
   return (
     <div className="event-panel__portal" role="presentation">
@@ -76,6 +79,25 @@ const EventPanel = ({ event, open, onClose }) => {
           )}
           <span className="event-panel__time">{formatTimeRange(startsAt, endsAt)}</span>
         </div>
+        {tags.length > 0 && (
+          <div className="event-panel__tags" aria-label="Tags">
+            {tags.map((tagId) => {
+              const meta = tagMetaById[tagId];
+              return (
+                <span
+                  key={tagId}
+                  className="event-panel__tag"
+                  style={{
+                    backgroundColor: meta?.color ?? 'rgba(15, 23, 42, 0.08)',
+                    color: meta?.textColor ?? 'var(--text-primary)'
+                  }}
+                >
+                  {meta?.label ?? tagId}
+                </span>
+              );
+            })}
+          </div>
+        )}
         <p className="event-panel__description">{description}</p>
         <dl className="event-panel__details">
           <div>
