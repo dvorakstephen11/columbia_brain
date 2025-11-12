@@ -75,6 +75,62 @@ export const mockEvents = [
     location: 'Downtown Library Reading Room',
     category: 'library',
     organizer: 'Downtown Library Association'
+  }),
+  createEvent('rec-2', 3, 16, 0, 90, {
+    title: 'Evening Yoga in the Park',
+    description: 'Gentle flow yoga session suitable for all levels, held outdoors in the park.',
+    location: 'Riverside Park Plaza',
+    category: 'rec',
+    organizer: 'City Parks & Wellness'
+  }),
+  createEvent('civic-2', 6, 10, 0, 60, {
+    title: 'Community Coffee Hour',
+    description: 'Informal gathering to discuss neighborhood concerns and meet your neighbors.',
+    location: 'Community Center Lobby',
+    category: 'civic',
+    organizer: '5th Ward Council'
+  }),
+  createEvent('tech-2', 12, 14, 30, 90, {
+    title: 'Afternoon Coding Workshop',
+    description: 'Hands-on session for beginners to learn web development basics.',
+    location: 'Innovation Hub, 2nd Floor Classroom',
+    category: 'tech',
+    organizer: 'Midtown Tech Guild'
+  }),
+  createEvent('music-1', 12, 20, 0, 90, {
+    title: 'Moonlit Music on the Green',
+    description: 'Open-air performances from local ensembles with projection art and light installations.',
+    location: 'Harborview Amphitheater',
+    category: 'rec',
+    organizer: 'Sound & Shore Collective'
+  }),
+  createEvent('arts-1', 5, 19, 0, 120, {
+    title: 'Community Art Gallery Opening',
+    description: 'Celebrate local artists with refreshments and live demonstrations.',
+    location: 'Downtown Arts Center',
+    category: 'rec',
+    organizer: 'Downtown Arts Collective'
+  }),
+  createEvent('kids-1', 8, 10, 30, 90, {
+    title: 'Storytime & Crafts for Kids',
+    description: 'Interactive storytelling followed by a themed craft activity for children ages 4-10.',
+    location: 'Downtown Library Children\'s Room',
+    category: 'library',
+    organizer: 'Downtown Library Association'
+  }),
+  createEvent('volunteer-2', 10, 9, 0, 180, {
+    title: 'Beach Cleanup Day',
+    description: 'Join fellow volunteers to clean up the shoreline and protect local wildlife.',
+    location: 'Harborview Beach',
+    category: 'volunteer',
+    organizer: 'Coastal Conservation Group'
+  }),
+  createEvent('market-2', 17, 8, 0, 180, {
+    title: 'Artisan Craft Market',
+    description: 'Local artisans showcase handmade jewelry, pottery, textiles, and more.',
+    location: 'Historic Market Square',
+    category: 'market',
+    organizer: 'Artisan Market Guild'
   })
 ].map((event) => ({
   ...event,
