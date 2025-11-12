@@ -6,12 +6,14 @@ import AccountMenu from '@/components/AccountMenu.jsx';
 const AppLayout = () => (
   <div className="app-shell">
     <header className="app-header">
-      <div>
-        <p className="app-header__eyebrow">Local events (mock)</p>
-        <h1>Community calendar</h1>
-        <p className="app-header__subtitle">
-          Discover what&apos;s happening around town this month — curated highlights for inspiration.
-        </p>
+      <div className="app-header__heading">
+        <div className="app-header__title-row">
+          <h1>Community calendar</h1>
+          <span className="app-header__badge" aria-label="Mock data badge">
+            Mock data
+          </span>
+        </div>
+        <p className="app-header__summary">Local highlights refreshed monthly.</p>
       </div>
       <AccountMenu />
     </header>
