@@ -200,9 +200,26 @@ const CalendarPage = () => {
           return a.tagIndex - b.tagIndex;
         });
       } else {
+        const filteredEvents = filteredEventsByDay.get(dayKey);
+        if (!filteredEvents || filteredEvents.length === 0) {
+          continue;
+        }
+
+        const countsByTagIndex = new Map();
+        filteredEvents.forEach((event) => {
+          selectedTagIndices.forEach((tagIndex) => {
+            if ((event.tagMask & (1 << tagIndex)) !== 0) {
+              countsByTagIndex.set(
+                tagIndex,
+                (countsByTagIndex.get(tagIndex) ?? 0) + 1
+              );
+            }
+          });
+        });
+
         badges = selectedTagIndices
           .map((tagIndex) => {
-            const count = countsMatrix[offset + tagIndex];
+            const count = countsByTagIndex.get(tagIndex) ?? 0;
             if (count === 0) return null;
             const tagId = TAGS[tagIndex];
             const label = tagMetaById[tagId]?.label ?? tagId;
@@ -241,7 +258,14 @@ const CalendarPage = () => {
     }
 
     return map;
-  }, [calendarDays.length, countsMatrix, dayKeys, selectedTagIndices, selectedTagMask]);
+  }, [
+    calendarDays.length,
+    countsMatrix,
+    dayKeys,
+    filteredEventsByDay,
+    selectedTagIndices,
+    selectedTagMask
+  ]);
 
   const handleSelectEvent = useCallback((event) => {
     setActiveTriggerId(event.id);
