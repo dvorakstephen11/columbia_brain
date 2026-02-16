@@ -1,0 +1,102 @@
+name: Nightly Pipeline Validation
+
+on:
+  schedule:
+    - cron: "20 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-ingest-and-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      contents: read
+    env:
+      DATABASE_URL: sqlite:///./tmp/nightly_pipeline.db
+      PIPELINE_INFERENCE_MODEL: gpt-5-nano
+      PIPELINE_ENABLE_LOCALITY_GATE: "1"
+      PIPELINE_MAX_LOCAL_GB: "30"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate inference configuration
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "OPENAI_API_KEY is required for nightly inference."
+            exit 1
+          fi
+
+      - name: Run nightly pipeline ingest cycle
+        run: |
+          mkdir -p tmp/nightly_pipeline_drift
+          python -m app.pipeline.daemon run \
+            --state-root state/nightly_validation \
+            --source-registry app/pipeline/config/sources_columbia_maury_high_value.yaml \
+            --blob-backend local \
+            --max-local-gb 30 \
+            --max-tasks 220 \
+            --timeout 20 \
+            --max-response-bytes 5000000 \
+            --enable-locality-gate | tee tmp/nightly_pipeline_drift/pipeline_run.jsonl
+
+      - name: Build nightly quality audit
+        run: |
+          python -m app.pipeline.daemon build-quality-audit \
+            --state-root state/nightly_validation \
+            --source-registry app/pipeline/config/sources_columbia_maury_high_value.yaml \
+            --sample-per-domain 20 \
+            --low-conf-threshold 0.7 | tee tmp/nightly_pipeline_drift/pipeline_quality_audit.jsonl
+
+      - name: Enforce pipeline drift thresholds
+        run: |
+          python scripts/check_pipeline_data_drift.py \
+            --database-url "$DATABASE_URL" \
+            --out tmp/nightly_pipeline_drift/pipeline_drift_report.json \
+            --max-duplicate-ratio 0.75 \
+            --max-out-of-scope-rows 0 \
+            --max-latest-age-hours 72 \
+            --min-total-rows 100 \
+            --min-rows-per-domain 1 \
+            --fail-on-empty-domains
+
+      - name: Download previous nightly validation artifacts
+        if: always()
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          workflow: nightly-pipeline-validation.yml
+          workflow_conclusion: success
+          name: nightly-pipeline-validation-artifacts
+          path: tmp/nightly_pipeline_prev
+          if_no_artifact_found: warn
+
+      - name: Compare current drift report vs previous
+        if: always()
+        run: |
+          python scripts/compare_pipeline_drift_reports.py \
+            --current tmp/nightly_pipeline_drift/pipeline_drift_report.json \
+            --previous tmp/nightly_pipeline_prev \
+            --out tmp/nightly_pipeline_drift/pipeline_drift_diff.json \
+            --top-entities-limit 20
+
+      - name: Upload nightly pipeline artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-pipeline-validation-artifacts
+          path: |
+            state/nightly_validation/reports/
+            tmp/nightly_pipeline_drift/
+            tmp/nightly_pipeline.db
